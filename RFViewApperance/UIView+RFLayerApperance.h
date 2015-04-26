@@ -14,7 +14,7 @@
 #import "RFUI.h"
 
 @interface UIView (RFLayerApperance)
-@property CGFloat cornerRadius UI_APPEARANCE_SELECTOR;
-@property CGFloat borderWidth UI_APPEARANCE_SELECTOR;
-@property UIColor *borderColor UI_APPEARANCE_SELECTOR;
+@property IBInspectable CGFloat cornerRadius;
+@property IBInspectable CGFloat borderWidth;
+@property IBInspectable UIColor *borderColor;
 @end

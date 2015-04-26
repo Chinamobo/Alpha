@@ -1,7 +1,7 @@
 /*!
     RFDelegateChain
 
-    Copyright (c) 2014 BB9z
+    Copyright (c) 2014-2015 BB9z
     https://github.com/RFUI/Alpha
 
     The MIT License (MIT)
@@ -15,9 +15,10 @@
     RFInitializing
 >
 @property (weak, nonatomic) IBOutlet id delegate;
+
 @end
 
-#define RFDelegateChainForwordMethods(FROM, TO) \
+#define RFDelegateChainForwardMethods(FROM, TO) \
 - (BOOL)respondsToSelector:(SEL)aSelector {\
     if ([FROM respondsToSelector:aSelector]) {\
         return YES;\
@@ -59,3 +60,10 @@
     return target;\
 }
 
+/**
+ This should be private.
+ */
+#define _RFDelegateChainHasBlockPropertyRespondsToSelector(PROPERTY, SELECTOR) \
+    if (@selector(SELECTOR) == aSelector) {\
+        return (self.PROPERTY) || [self.delegate respondsToSelector:aSelector];\
+    }

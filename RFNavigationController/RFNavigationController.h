@@ -8,14 +8,17 @@
     The MIT License (MIT)
     http://www.opensource.org/licenses/mit-license.php
 
-    TEST
+    BETA
  */
 #import "RFUI.h"
 #import "RFNavigationControllerTransitionDelegate.h"
 
 @protocol RFNavigationBehaving;
 
-@interface RFNavigationController : UINavigationController <
+/**
+ 
+ */
+NS_CLASS_AVAILABLE_IOS(7_0) @interface RFNavigationController : UINavigationController <
     RFInitializing,
     RFNavigationControllerAppearanceUpdating
 >
@@ -35,12 +38,14 @@
 
  If the reciver is load from nib, this property will be set with storyboard setting.
  */
-@property (assign, nonatomic) BOOL preferredNavigationBarHidden;
+@property (assign, nonatomic) IBInspectable BOOL preferredNavigationBarHidden;
 
-#pragma mark - Tab Bar
+#pragma mark - Bottom Bar
 
 /**
  A Boolean indicating whether the navigation controller’s built-in bottom bar is visible.
+ 
+ This bottom bar is a custom view, not the same with navigation controller’s toolbar.
  */
 @property (assign, nonatomic) BOOL bottomBarHidden;
 
@@ -50,6 +55,38 @@
 - (void)setBottomBarHidden:(BOOL)hidden animated:(BOOL)animated;
 
 @property (strong, nonatomic) IBOutlet UIView *bottomBar;
+
+/**
+ A Boolean value indicating whether the bottom bar is translucent (YES) or not (NO).
+ 
+ If the bottom bar is translucent, layout will be extended includes opaque bars.
+ */
+@property (assign, nonatomic) IBInspectable BOOL translucentBottomBar;
+
+/**
+ A Boolean value indicating whether the bottom bar fades in and out as it is shown or hidden, respectively.
+ */
+@property (assign, nonatomic) IBInspectable BOOL bottomBarFadeAnimation;
+
+#pragma mark - Status Bar
+
+/**
+ If you want modify staus bar manually through UIApplication, you need set UIViewControllerBasedStatusBarAppearance to NO in application’s info.plist.
+ 
+ Set YES will let the reciver ask current view controller for status bar appearance and then update.
+
+ Default No.
+ */
+@property (assign, nonatomic) IBInspectable BOOL handelViewControllerBasedStatusBarAppearance;
+
+/// Default `NO`.
+@property (assign, nonatomic) IBInspectable BOOL prefersStatusBarHidden;
+
+/// Default `UIStatusBarStyleDefault`.
+@property (assign, nonatomic) UIStatusBarStyle preferredStatusBarStyle;
+
+/// Default `UIStatusBarAnimationFade`.
+@property (assign, nonatomic) UIStatusBarAnimation preferredStatusBarUpdateAnimation;
 
 #pragma mark - Delegate
 @property (strong, nonatomic) IBOutlet RFNavigationControllerTransitionDelegate *forwardDelegate;
@@ -64,7 +101,9 @@
 
  @return A Boolean value of YES specifies the navigation bar should be hidden. Default value is NO.
  */
-- (BOOL)prefersNavigationBarHiddenForNavigationController:(RFNavigationController *)navigation;
+- (BOOL)prefersNavigationBarHidden;
+
+- (BOOL)prefersNavigationBarHiddenForNavigationController:(RFNavigationController *)navigation  DEPRECATED_ATTRIBUTE;
 
 /**
  Ask current view controller whether should pop or not when user tap the back button.

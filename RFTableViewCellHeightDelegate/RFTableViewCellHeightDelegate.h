@@ -11,7 +11,7 @@
  */
 
 /**
- This solution works, and may better than other solutions. But is not perfect, especially when a table view’s frame changed.
+ This solution works, and may better than other solutions. But is not perfect, especially when set height asynchronously or cell’s layout is complex.
  */
 
 #import "RFDelegateChain.h"
@@ -53,11 +53,13 @@
 #pragma mark - Cache
 - (void)invalidateOffscreenCellCache;
 
-@property (assign, nonatomic) BOOL cellHeightCacheEnabled;
+@property (assign, nonatomic) IBInspectable BOOL cellHeightCacheEnabled;
 
 - (void)invalidateCellHeightCache;
 - (void)invalidateCellHeightCacheAtIndexPath:(NSIndexPath *)indexPath;
 - (void)invalidateCellHeightCacheAtIndexPaths:(NSArray *)indexPaths;
+
+- (NSNumber *)cachedHeightAtIndexPath:(NSIndexPath *)indexPath;
 
 #pragma mark - UITableViewDelegate
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath;

@@ -62,7 +62,7 @@ RFInitializingRootForNSObject
     // Needs update queue, just add or replace
     NSUInteger ix = [self.messageQueue indexOfObject:message];
     if (ix != NSNotFound) {
-        RFNetworkActivityIndicatorMessage *messageInQueue = [self.messageQueue objectAtIndex:ix];
+        RFNetworkActivityIndicatorMessage *messageInQueue = (self.messageQueue)[ix];
         if (message.priority >= messageInQueue.priority) {
             // Readd it
             [self.messageQueue removeObject:message];
@@ -96,7 +96,7 @@ RFInitializingRootForNSObject
 }
 
 - (RFNetworkActivityIndicatorMessage *)popNextMessageToDisplay {
-    RFNetworkActivityIndicatorMessagePriority ctPriority = NSIntegerMin;
+    RFNetworkActivityIndicatorMessagePriority ctPriority = (RFNetworkActivityIndicatorMessagePriority)NSIntegerMin;
     RFNetworkActivityIndicatorMessage *message;
     for (RFNetworkActivityIndicatorMessage *obj in self.messageQueue) {
         if (obj.priority > ctPriority) {
@@ -121,10 +121,10 @@ RFInitializingRootForNSObject
 @implementation RFNetworkActivityIndicatorMessage
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"<%@: %p; title = %@; message = %@; identifier = %@; priority = %d>", self.class, self, self.title, self.message, self.identifier, self.priority];
+    return [NSString stringWithFormat:@"<%@: %p; title = %@; message = %@; identifier = %@; priority = %d>", self.class, self, self.title, self.message, self.identifier, (int)self.priority];
 }
 
-- (id)init {
+- (instancetype)init {
     self = [super init];
     if (self) {
         _identifier = @"";

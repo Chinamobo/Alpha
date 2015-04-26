@@ -18,12 +18,12 @@
     CGFloat pixelOffsetX = 0;
     CGFloat pixelOffsetY = 0;
     if (self.onePixel) {
-        CGFloat pixelOffset = 1 / self.contentScaleFactor / 2;
+        CGFloat pixelOffset = 1 / self.window.screen.scale / 2;
         if (isDrawingVertically) {
-            pixelOffsetX = (self.x > self.rightMargin)? pixelOffset : - pixelOffset;
+            pixelOffsetX = (ABS(self.x) > ABS(self.rightMargin))? pixelOffset : - pixelOffset;
         }
         else {
-            pixelOffsetY = (self.y > self.bottomMargin)? pixelOffset : -pixelOffset;
+            pixelOffsetY = (ABS(self.y) > ABS(self.bottomMargin))? pixelOffset : -pixelOffset;
         }
     }
 
@@ -40,7 +40,7 @@
 
     CGFloat lineWidth = 1;
     if (self.onePixel) {
-        lineWidth = 1 / self.contentScaleFactor;
+        lineWidth = 1 / self.window.screen.scale;
     }
     else {
         lineWidth = (isDrawingVertically)? width : height;

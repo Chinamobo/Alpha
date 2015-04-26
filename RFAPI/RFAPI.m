@@ -76,11 +76,15 @@ RFInitializingRootForNSObject
 }
 
 - (NSArray *)operationsWithIdentifier:(NSString *)identifier {
-    return [self.operations filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"%K.%K.%K == %@", @keypathClassInstance(AFHTTPRequestOperation, userInfo), RFAPIOperationUIkControl, @keypathClassInstance(RFAPIControl, identifier), identifier]];
+    @autoreleasepool {
+        return [self.operations filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"%K.%K.%K == %@", @keypathClassInstance(AFHTTPRequestOperation, userInfo), RFAPIOperationUIkControl, @keypathClassInstance(RFAPIControl, identifier), identifier]];
+    }
 }
 
 - (NSArray *)operationsWithGroupIdentifier:(NSString *)identifier {
-    return [self.operations filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"%K.%K.%K == %@", @keypathClassInstance(AFHTTPRequestOperation, userInfo), RFAPIOperationUIkControl, @keypathClassInstance(RFAPIControl, groupIdentifier), identifier]];
+    @autoreleasepool {
+        return [self.operations filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"%K.%K.%K == %@", @keypathClassInstance(AFHTTPRequestOperation, userInfo), RFAPIOperationUIkControl, @keypathClassInstance(RFAPIControl, groupIdentifier), identifier]];
+    }
 }
 
 #pragma mark - Request
@@ -101,7 +105,6 @@ RFInitializingRootForNSObject
         __RFAPILogError(DEBUG_ERROR, DEBUG_ARG);\
         error = [NSError errorWithDomain:RFAPIErrorDomain code:0 userInfo:@{ NSLocalizedDescriptionKey: ERROR_DESCRIPTION, NSLocalizedFailureReasonErrorKey: ERROR_FAILUREREASON, NSLocalizedRecoverySuggestionErrorKey: ERROR_RECOVERYSUGGESTION }];\
         __RFAPICompletionCallback(operationFailure, op, error);\
-        __RFAPICompletionCallback(operationCompletion, op);\
         return;\
     }
 
@@ -128,29 +131,6 @@ RFInitializingRootForNSObject
 
     // Request object get ready.
     // Build operation block.
-    void (^operationSuccess)(id, id) = ^(AFHTTPRequestOperation *blockOp, id blockResponse){
-        if (success) {
-            success(blockOp, blockResponse);
-        }
-    };
-
-    void (^operationFailure)(id, NSError*) = ^(AFHTTPRequestOperation *blockOp, NSError *blockError) {
-
-        if (blockError.code == NSURLErrorCancelled && blockError.domain == NSURLErrorDomain) {
-            dout_info(@"A HTTP operation cancelled: %@", blockOp);
-            return;
-        }
-
-        if ([self generalHandlerForError:blockError withDefine:define controlInfo:controlInfo requestOperation:blockOp operationFailureCallback:failure]) {
-            if (failure) {
-                failure(blockOp, blockError);
-            }
-            else {
-                [self.networkActivityIndicatorManager alertError:blockError title:@"请求失败"];
-            }
-        };
-    };
-
     RFNetworkActivityIndicatorMessage *message = controlInfo.message;
     void (^operationCompletion)(id) = ^(AFHTTPRequestOperation *blockOp){
         NSString *mid = message.identifier;
@@ -163,6 +143,32 @@ RFInitializingRootForNSObject
         }
     };
 
+    void (^operationSuccess)(id, id) = ^(AFHTTPRequestOperation *blockOp, id blockResponse){
+        if (success) {
+            success(blockOp, blockResponse);
+        }
+        operationCompletion(blockOp);
+    };
+
+    void (^operationFailure)(id, NSError*) = ^(AFHTTPRequestOperation *blockOp, NSError *blockError) {
+
+        if (blockError.code == NSURLErrorCancelled && blockError.domain == NSURLErrorDomain) {
+            dout_info(@"A HTTP operation cancelled: %@", blockOp);
+            operationCompletion(blockOp);
+            return;
+        }
+
+        if ([self generalHandlerForError:blockError withDefine:define controlInfo:controlInfo requestOperation:blockOp operationFailureCallback:failure]) {
+            if (failure) {
+                failure(blockOp, blockError);
+            }
+            else {
+                [self.networkActivityIndicatorManager alertError:blockError title:@"请求失败"];
+            }
+        };
+        operationCompletion(blockOp);
+    };
+
     // Check cache
     NSCachedURLResponse *cachedResponse = [self.cacheManager cachedResponseForRequest:request define:define control:controlInfo];
     if (cachedResponse) {
@@ -172,35 +178,30 @@ RFInitializingRootForNSObject
         NSError *error = nil;
         id responseObject = [serializer responseObjectForResponse:cachedResponse.response data:cachedResponse.data error:&error];
         if (error) {
-            operationFailure(nil, error);
-            operationCompletion(nil);
+            dispatch_after_seconds(0, ^{
+                operationFailure(nil, error);
+            });
             return nil;
         }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self processingCompletionWithHTTPOperation:nil responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure completion:operationCompletion];
+        dispatch_after_seconds(0, ^{
+            [self processingCompletionWithHTTPOperation:nil responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure];
         });
         return nil;
     }
 
     // Setup HTTP operation
-    AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
-    operation.responseSerializer = [self.defineManager responseSerializerForDefine:define];
-    operation.shouldUseCredentialStorage = self.shouldUseCredentialStorage;
-    operation.credential = self.credential;
-    operation.securityPolicy = self.securityPolicy;
-    if (controlInfo) {
-        operation.userInfo = @{ RFAPIOperationUIkControl : controlInfo };
-    }
+    AFHTTPRequestOperation *operation = [self requestOperationWithRequest:request define:define controlInfo:controlInfo];
 
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *op, id responseObject) {
-        dout_debug(@"HTTP request operation(%p) with info: %@ completed.", op, [op valueForKeyPath:@"userInfo.RFAPIOperationUIkControl"]);
+        @autoreleasepool {
+            dout_debug(@"HTTP request operation(%p) with info: %@ completed.", op, [op valueForKeyPath:@"userInfo.RFAPIOperationUIkControl"]);
 
-        [self processingCompletionWithHTTPOperation:op responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure completion:operationCompletion];
-        [self.cacheManager storeCachedResponseForRequest:op.request response:op.response data:op.responseData define:define control:controlInfo];
+            [self processingCompletionWithHTTPOperation:op responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure];
+            [self.cacheManager storeCachedResponseForRequest:op.request response:op.response data:op.responseData define:define control:controlInfo];
+        }
     } failure:^(AFHTTPRequestOperation *op, NSError *error) {
         operationFailure(op, error);
-        operationCompletion(op);
     }];
 
     if (progress) {
@@ -209,7 +210,9 @@ RFInitializingRootForNSObject
 
     // Start request
     if (message) {
-        [self.networkActivityIndicatorManager showMessage:message];
+        dispatch_sync_on_main(^{
+            [self.networkActivityIndicatorManager showMessage:message];
+        });
     }
     [self addOperation:operation];
     return operation;
@@ -269,7 +272,7 @@ RFInitializingRootForNSObject
     }
     else {
         NSURLRequestCachePolicy cachePolicy = [self.cacheManager cachePolicyWithDefine:define control:controlInfo];
-        r = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:cachePolicy timeoutInterval:10];
+        r = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:cachePolicy timeoutInterval:40];
         [r setHTTPMethod:define.method];
         r = [[s requestBySerializingRequest:r withParameters:requestParameters error:&e] mutableCopy];
     }
@@ -307,9 +310,21 @@ RFInitializingRootForNSObject
     return request;
 }
 
+- (AFHTTPRequestOperation *)requestOperationWithRequest:(NSURLRequest *)request define:(RFAPIDefine *)define controlInfo:(RFAPIControl *)controlInfo {
+    AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
+    operation.responseSerializer = [self.defineManager responseSerializerForDefine:define];
+    operation.shouldUseCredentialStorage = self.shouldUseCredentialStorage;
+    operation.credential = self.credential;
+    operation.securityPolicy = self.securityPolicy;
+    if (controlInfo) {
+        operation.userInfo = @{ RFAPIOperationUIkControl : controlInfo };
+    }
+    return operation;
+}
+
 #pragma mark - Handel Response
 
-- (void)processingCompletionWithHTTPOperation:(AFHTTPRequestOperation *)op responseObject:(id)responseObject define:(RFAPIDefine *)define control:(RFAPIControl *)control success:(void (^)(AFHTTPRequestOperation *, id))operationSuccess failure:(void (^)(id, NSError*))operationFailure completion:(void (^)(id))operationCompletion {
+- (void)processingCompletionWithHTTPOperation:(AFHTTPRequestOperation *)op responseObject:(id)responseObject define:(RFAPIDefine *)define control:(RFAPIControl *)control success:(void (^)(AFHTTPRequestOperation *, id))operationSuccess failure:(void (^)(id, NSError*))operationFailure {
 
     Class expectClass = define.responseClass;
     NSError *error = nil;
@@ -340,7 +355,6 @@ RFInitializingRootForNSObject
         case RFAPIDefineResponseExpectSuccess: {
             if (![self isSuccessResponse:&responseObject error:&error]) {
                 operationFailure(op, error);
-                operationCompletion(op);
                 return;
             }
             break;
@@ -351,7 +365,6 @@ RFInitializingRootForNSObject
     }
     _douto(responseObject)
     operationSuccess(op, responseObject);
-    operationCompletion(op);
 
 }
 
@@ -379,7 +392,7 @@ NSString *const RFAPIRequestCustomizationControlKey = @"_RFAPIRequestCustomizati
     return [NSString stringWithFormat:@"<%@: %p, identifier = %@, groupIdentifier = %@>", self.class, self, self.identifier, self.groupIdentifier];
 }
 
-- (id)initWithDictionary:(NSDictionary *)info {
+- (instancetype)initWithDictionary:(NSDictionary *)info {
     self = [super init];
     if (self) {
         _message = info[RFAPIMessageControlKey];
@@ -391,7 +404,7 @@ NSString *const RFAPIRequestCustomizationControlKey = @"_RFAPIRequestCustomizati
     return self;
 }
 
-- (id)initWithIdentifier:(NSString *)identifier loadingMessage:(NSString *)message {
+- (instancetype)initWithIdentifier:(NSString *)identifier loadingMessage:(NSString *)message {
     self = [super init];
     if (self) {
         _identifier = identifier;

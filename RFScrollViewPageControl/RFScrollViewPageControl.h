@@ -21,9 +21,14 @@
     RFInitializing
 >
 
-@property(weak, nonatomic) IBOutlet UIScrollView *scrollView;
+@property (weak, nonatomic) IBOutlet UIScrollView *scrollView;
 
-@property(assign, nonatomic) BOOL supportHalfPage;
+@property (assign, nonatomic) IBInspectable BOOL supportHalfPage;
+
+/**
+ A Boolean value that determines whether the receiver is hidden when there are less than two page.
+ */
+@property (assign, nonatomic) IBInspectable BOOL hidesWhenOnePage;
 
 /**
  Call this method force update pageControl status.

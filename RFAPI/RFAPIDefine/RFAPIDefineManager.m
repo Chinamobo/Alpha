@@ -17,6 +17,16 @@
 @implementation RFAPIDefineManager
 RFInitializingRootForNSObject
 
++ (NSRegularExpression *)cachedPathParameterRegularExpression {
+    static NSRegularExpression *sharedInstance = nil;
+    static dispatch_once_t oncePredicate;
+    dispatch_once(&oncePredicate, ^{
+        sharedInstance = [[NSRegularExpression alloc] initWithPattern:@"\\{\\w+\\}" options:NSRegularExpressionAnchorsMatchLines error:nil];
+        RFAssert(sharedInstance, @"Cannot create path parameter regular expression");
+    });
+    return sharedInstance;
+}
+
 - (void)onInit {
     _defineCache = [[NSCache alloc] init];
     _defineCache.name = @"RFAPIDefineCache";
@@ -44,7 +54,7 @@ RFInitializingRootForNSObject
                 [self.defaultRule setDictionary:rule];
             }
 
-            [self.rawRules setObject:rule forKey:name];
+            (self.rawRules)[name] = rule;
         }
         else {
             dout_warning(@"Bad rule(%@): %@", name, rule);
@@ -93,7 +103,7 @@ RFInitializingRootForNSObject
 }
 
 - (void)setValue:(id)value forRule:(NSString *)key defineName:(NSString *)defineName {
-    [self.rawRules[defineName] setObject:value forKey:key];
+    (self.rawRules[defineName])[key] = value;
 }
 
 - (void)removeRule:(NSString *)key withDefineName:(NSString *)defineName {
@@ -108,8 +118,7 @@ RFInitializingRootForNSObject
     NSMutableString *path = [define.path mutableCopy];
 
     // Replace {PARAMETER} in path
-    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:@"\\{\\w+\\}" options:NSRegularExpressionAnchorsMatchLines error:error];
-    NSArray *matches = [regex matchesInString:path options:0 range:NSMakeRange(0, path.length)];
+    NSArray *matches = [[RFAPIDefineManager cachedPathParameterRegularExpression] matchesInString:path options:kNilOptions range:NSMakeRange(0, path.length)];
 
     for (NSTextCheckingResult *match in matches.reverseObjectEnumerator) {
         NSRange keyRange = match.range;
@@ -185,7 +194,7 @@ RFInitializingRootForNSObject
 
 @implementation RFAPIDefine (RFConfigFile)
 
-- (id)initWithRule:(NSDictionary *)rule name:(NSString *)name {
+- (instancetype)initWithRule:(NSDictionary *)rule name:(NSString *)name {
     NSParameterAssert(name);
     NSParameterAssert(rule);
     self = [self init];

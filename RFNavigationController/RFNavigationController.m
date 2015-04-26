@@ -22,8 +22,16 @@ RFUIInterfaceOrientationSupportNavigation
 RFInitializingRootForUIViewController
 
 - (void)onInit {
+    _prefersStatusBarHidden = NO;
+    _preferredStatusBarStyle = UIStatusBarStyleDefault;
+    _preferredStatusBarUpdateAnimation = UIStatusBarAnimationFade;
+
     self.forwardDelegate = [RFNavigationControllerTransitionDelegate new];
     self.delegate = self.forwardDelegate;
+
+    if (!RFNavigationControllerGlobalInstance) {
+        RFNavigationControllerGlobalInstance = self;
+    }
 }
 
 - (void)awakeFromNib {
@@ -40,10 +48,6 @@ RFInitializingRootForUIViewController
 }
 
 - (void)viewDidLoad {
-    if (!RFNavigationControllerGlobalInstance) {
-        RFNavigationControllerGlobalInstance = self;
-    }
-
     [super viewDidLoad];
 
     self.transitionView = self.view.subviews.firstObject;
@@ -61,7 +65,11 @@ RFInitializingRootForUIViewController
         [self.bottomBarHolder addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"|-0-[bottomBar]-0-|" options:0 metrics:nil views:dic]];
         [self.bottomBarHolder addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[bottomBar]-0-|" options:0 metrics:nil views:dic]];
     }
-    [self updateNavigationAppearanceWithViewController:self.topViewController animated:NO];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self updateNavigationAppearanceWithViewController:self.topViewController animated:animated];
 }
 
 - (void)setPreferredNavigationBarHidden:(BOOL)preferredNavigationBarHidden {
@@ -100,8 +108,10 @@ RFInitializingRootForUIViewController
     UIView *transitionView = self.transitionView;
 
     bottomBarHolder.y = self.view.height - (bottomBarHidden? 0 : barHeight);
-    bottomBarHolder.alpha = bottomBarHidden? 0 : 1;
-    transitionView.height = self.view.height - transitionView.y - (bottomBarHidden? 0 : barHeight);
+    if (self.bottomBarFadeAnimation) {
+        bottomBarHolder.alpha = bottomBarHidden? 0 : 1;
+    }
+    transitionView.height = self.view.height - transitionView.y - ((!bottomBarHidden && !self.translucentBottomBar)? barHeight: 0);
 }
 
 - (void)setBottomBarHidden:(BOOL)hidden animated:(BOOL)animated {
@@ -137,6 +147,7 @@ RFInitializingRootForUIViewController
         }
 
         _bottomBar = bottomBar;
+        self.bottomBarHidden = self.bottomBarHidden;
     }
 }
 
@@ -144,14 +155,21 @@ RFInitializingRootForUIViewController
 
 - (void)updateNavigationAppearanceWithViewController:(id)viewController animated:(BOOL)animated {
     BOOL shouldHide = self.preferredNavigationBarHidden;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if ([viewController respondsToSelector:@selector(prefersNavigationBarHiddenForNavigationController:)]) {
         shouldHide = [(id<RFNavigationBehaving>)viewController prefersNavigationBarHiddenForNavigationController:self];
     }
-
-    if (self.navigationBarHidden != shouldHide) {
-        [self setNavigationBarHidden:shouldHide animated:YES];
+#pragma clang diagnostic pop
+    if ([viewController respondsToSelector:@selector(prefersNavigationBarHidden)]) {
+        shouldHide = [(id<RFNavigationBehaving>)viewController prefersNavigationBarHidden];
     }
 
+    if (self.navigationBarHidden != shouldHide) {
+        [self setNavigationBarHidden:shouldHide animated:animated];
+    }
+
+    // Handel bottom bar appearance
     shouldHide = YES;
     if ([viewController respondsToSelector:@selector(prefersBottomBarShown)]) {
         shouldHide = ![(id)viewController prefersBottomBarShown];
@@ -159,15 +177,43 @@ RFInitializingRootForUIViewController
 
     if (self.bottomBarHidden != shouldHide) {
         // If is interactive transitioning, use transitionDuration.
-        // Show, no animation for better visual effect.
-        NSTimeInterval transitionDuration = (self.transitionCoordinator.isInteractive || shouldHide)? self.transitionCoordinator.transitionDuration : 0;
-        [UIView animateWithDuration:transitionDuration delay:0 options:UIViewAnimationOptionBeginFromCurrentState animated:animated beforeAnimations:^{
+        NSTimeInterval transitionDuration = self.transitionCoordinator.isInteractive? self.transitionCoordinator.transitionDuration : 0.35;
+
+        // Show, no animation for better visual effect if bottom bar is not translucent.
+        BOOL shouldAnimatd = (!shouldHide && !self.translucentBottomBar)? NO : animated;
+        [UIView animateWithDuration:transitionDuration delay:0 options:UIViewAnimationOptionBeginFromCurrentState animated:shouldAnimatd beforeAnimations:^{
         } animations:^{
             self.bottomBarHidden = shouldHide;
         } completion:nil];
     }
-}
 
+    // Handel status bar appearance
+    if (self.handelViewControllerBasedStatusBarAppearance) {
+        BOOL shouldStatusBarHidden = self.prefersStatusBarHidden;
+        if ([viewController respondsToSelector:@selector(prefersStatusBarHidden)]) {
+            shouldStatusBarHidden = [viewController prefersStatusBarHidden];
+        }
+
+        if (shouldStatusBarHidden != [UIApplication sharedApplication].statusBarHidden) {
+            UIStatusBarAnimation preferredStatusBarUpdateAnimation = self.preferredStatusBarUpdateAnimation;
+            if ([viewController respondsToSelector:@selector(preferredStatusBarUpdateAnimation)]) {
+                preferredStatusBarUpdateAnimation = [viewController preferredStatusBarUpdateAnimation];
+            }
+            [[UIApplication sharedApplication] setStatusBarHidden:shouldStatusBarHidden withAnimation:animated? preferredStatusBarUpdateAnimation : UIStatusBarAnimationNone];
+        }
+
+        UIStatusBarStyle preferredStatusBarStyle = self.preferredStatusBarStyle;
+        if ([viewController respondsToSelector:@selector(preferredStatusBarStyle)]) {
+            UIStatusBarStyle vcStyle = [viewController preferredStatusBarStyle];
+            if (vcStyle != UIStatusBarStyleDefault) {
+                preferredStatusBarStyle = vcStyle;
+            }
+        }
+        if (preferredStatusBarStyle != [UIApplication sharedApplication].statusBarStyle) {
+            [[UIApplication sharedApplication] setStatusBarStyle:preferredStatusBarStyle animated:animated];
+        }
+    }
+}
 
 
 #pragma mark - Back button
@@ -212,8 +258,12 @@ RFInitializingRootForUIViewController
 @implementation UIViewController (RFNavigationBehaving)
 
 - (void)updateNavigationAppearanceAnimated:(BOOL)animated {
-    RFNavigationController *nav = (id)self.navigationController;
-    [nav updateNavigationAppearanceWithViewController:(id)self animated:animated];
+    @autoreleasepool {
+        RFNavigationController *nav = (id)self.navigationController;
+        if ([nav respondsToSelector:@selector(updateNavigationAppearanceWithViewController:animated:)]) {
+            [nav updateNavigationAppearanceWithViewController:(id)self animated:animated];
+        }
+    }
 }
 
 @end

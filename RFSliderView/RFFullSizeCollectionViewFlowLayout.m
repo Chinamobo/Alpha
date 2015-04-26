@@ -6,7 +6,7 @@
 
 @implementation RFFullSizeCollectionViewFlowLayout
 
-- (id)init {
+- (instancetype)init {
     if (!(self = [super init])) return nil;
 
     self.sectionInset = UIEdgeInsetsZero;
@@ -17,8 +17,14 @@
 }
 
 - (void)prepareLayout {
+    CGSize itemSize = self.collectionView.bounds.size;
+    if (itemSize.width > 0 && itemSize.width < 10000 && itemSize.height > 0 && itemSize.height < 10000) {
+        self.itemSize = itemSize;
+    }
+    else {
+        self.itemSize = CGSizeMake(1, 1);
+    }
     [super prepareLayout];
-    self.itemSize = self.collectionView.bounds.size;
 }
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds {

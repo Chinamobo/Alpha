@@ -1,8 +1,9 @@
 
 #import "RFScrollViewPageControl.h"
+#import "RFKVOWrapper.h"
 
 @interface RFScrollViewPageControl ()
-@property (strong, nonatomic) id observer;
+@property (weak, nonatomic) id observer;
 @end
 
 @implementation RFScrollViewPageControl
@@ -19,15 +20,23 @@ RFInitializingRootForUIView
 - (void)setScrollView:(UIScrollView *)scrollView {
     if (_scrollView != scrollView) {
         if (_scrollView) {
-            [_scrollView rac_removeObserverWithIdentifier:self.observer];
+            [_scrollView RFRemoveObserverWithIdentifier:self.observer];
         }
 
         if (scrollView) {
-            self.observer = [scrollView rac_addObserver:self forKeyPath:@keypath(scrollView, contentOffset) options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionInitial queue:nil block:^(RFScrollViewPageControl *observer, NSDictionary *change) {
+            self.observer = [scrollView RFAddObserver:self forKeyPath:@keypath(scrollView, contentOffset) options:(NSKeyValueObservingOptions)(NSKeyValueObservingOptionNew|NSKeyValueObservingOptionInitial) queue:nil block:^(RFScrollViewPageControl *observer, NSDictionary *change) {
                 [observer setNeedsUpdatePage];
             }];
         }
         _scrollView = scrollView;
+    }
+}
+
+- (void)setNumberOfPages:(NSInteger)numberOfPages {
+    [super setNumberOfPages:numberOfPages];
+
+    if (self.hidesWhenOnePage) {
+        self.hidden = (numberOfPages <= 1);
     }
 }
 

@@ -6,9 +6,11 @@
 @interface RFNavigationControllerTransitionDelegate ()
 @property (readwrite, weak, nonatomic) RFNavigationPopInteractionController *currentPopInteractionController;
 @property (readwrite, weak, nonatomic) UIGestureRecognizer *currentPopInteractionGestureRecognizer;
+@property (assign, nonatomic) BOOL gestureRecognizerEnabled;
 @end
 
 @implementation RFNavigationControllerTransitionDelegate
+@dynamic delegate;
 
 - (id<UIViewControllerAnimatedTransitioning>)navigationController:(UINavigationController *)navigationController animationControllerForOperation:(UINavigationControllerOperation)operation fromViewController:(UIViewController *)fromVC toViewController:(UIViewController *)toVC {
 
@@ -44,16 +46,18 @@
     }
 
     if (operation == UINavigationControllerOperationPush) {
-        // Needs setup pop interaction controller to toVC.
-        RFNavigationPopInteractionController *interactionController;
-        if (animationController.interactionControllerType) {
-            Class controllerClass = NSClassFromString(animationController.interactionControllerType);
-            if (controllerClass && [controllerClass isSubclassOfClass:[RFNavigationPopInteractionController class]]) {
-                interactionController = [controllerClass new];
-            }
+        @autoreleasepool {
+            // Needs setup pop interaction controller to toVC.
+            RFNavigationPopInteractionController *interactionController;
+            if (animationController.interactionControllerType) {
+                Class controllerClass = NSClassFromString(animationController.interactionControllerType);
+                if (controllerClass && [controllerClass isSubclassOfClass:[RFNavigationPopInteractionController class]]) {
+                    interactionController = [controllerClass new];
+                }
 
-            if (interactionController) {
-                interactionController.viewController = toVC;
+                if (interactionController) {
+                    interactionController.viewController = toVC;
+                }
             }
         }
     }
@@ -88,14 +92,29 @@
 - (void)navigationController:(UINavigationController *)navigationController willShowViewController:(UIViewController *)viewController animated:(BOOL)animated {
     if ([navigationController respondsToSelector:@selector(updateNavigationAppearanceWithViewController:animated:)]) {
         [(id)navigationController updateNavigationAppearanceWithViewController:viewController animated:animated];
+        [navigationController.transitionCoordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            if (context.isCancelled) {
+                [(id)navigationController updateNavigationAppearanceWithViewController:navigationController.topViewController animated:context.isAnimated];
+            }
+        }];
     }
 
     if ([self.delegate respondsToSelector:@selector(navigationController:willShowViewController:animated:)]) {
         [self.delegate navigationController:navigationController willShowViewController:viewController animated:animated];
     }
+
+    UIGestureRecognizer *gr = self.currentPopInteractionGestureRecognizer;
+    if (gr.state == UIGestureRecognizerStatePossible) {
+        self.gestureRecognizerEnabled = gr.enabled;
+        gr.enabled = NO;
+    }
 }
 
 - (void)navigationController:(UINavigationController *)navigationController didShowViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    if (self.currentPopInteractionGestureRecognizer && self.gestureRecognizerEnabled) {
+        self.currentPopInteractionGestureRecognizer.enabled = YES;
+    }
+
     self.currentPopInteractionController = (id)viewController.RFTransitioningInteractionController;
     navigationController.interactivePopGestureRecognizer.enabled = (!self.currentPopInteractionController && navigationController.viewControllers.count > 1);
 
