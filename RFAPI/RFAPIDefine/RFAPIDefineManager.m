@@ -92,6 +92,7 @@ RFInitializingRootForNSObject
     return self.rawRules[defineName][key];
 }
 
+
 - (void)setValue:(id)value forRule:(NSString *)key defineName:(NSString *)defineName {
     [self.rawRules[defineName] setObject:value forKey:key];
 }
@@ -112,7 +113,7 @@ RFInitializingRootForNSObject
     }
     else {
         NSString *URLString = define.pathPrefix? [define.pathPrefix stringByAppendingString:path] : path;
-        url = [NSURL URLWithString:URLString relativeToURL:define.baseURL];
+        url = [NSURL URLWithString:URLString ?: @"" relativeToURL:define.baseURL];
     }
     if (!url) {
 #if RFDEBUG

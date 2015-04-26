@@ -18,34 +18,34 @@
     [super replaceMessage:displayingMessage withNewMessage:message];
 
     if (!message) {
-        [SVProgressHUD dismiss];
+//        [SVProgressHUD dismiss];
         return;
     }
 
     NSString *stautsString = message.title? [NSString stringWithFormat:@"%@: %@", message.title, message.message] : message.message;
 
     SVProgressHUDMaskType maskType = message.modal? SVProgressHUDMaskTypeGradient : SVProgressHUDMaskTypeNone;
-    switch (message.status) {
-        case RFNetworkActivityIndicatorStatusSuccess: {
-            [self activeAutoDismissObserver];
-            [SVProgressHUD showSuccessWithStatus:stautsString];
-            break;
-        }
-
-        case RFNetworkActivityIndicatorStatusFail: {
-            [self activeAutoDismissObserver];
-            [SVProgressHUD showErrorWithStatus:stautsString];
-            break;
-        }
-        case RFNetworkActivityIndicatorStatusDownloading:
-        case RFNetworkActivityIndicatorStatusUploading: {
-            [self deactiveAutoDismissObserver];
-            [SVProgressHUD showProgress:message.progress status:stautsString maskType:maskType];
-        }
-        default: {
-            [SVProgressHUD showWithStatus:stautsString maskType:maskType];
-        }
-    }
+//    switch (message.status) {
+//        case RFNetworkActivityIndicatorStatusSuccess: {
+//            [self activeAutoDismissObserver];
+//            [SVProgressHUD showSuccessWithStatus:stautsString];
+//            break;
+//        }
+//
+//        case RFNetworkActivityIndicatorStatusFail: {
+//            [self activeAutoDismissObserver];
+//            [SVProgressHUD showErrorWithStatus:stautsString];
+//            break;
+//        }
+//        case RFNetworkActivityIndicatorStatusDownloading:
+//        case RFNetworkActivityIndicatorStatusUploading: {
+//            [self deactiveAutoDismissObserver];
+//            [SVProgressHUD showProgress:message.progress status:stautsString maskType:maskType];
+//        }
+//        default: {
+//            [SVProgressHUD showWithStatus:stautsString maskType:maskType];
+//        }
+//    }
 
     _dout_info(@"After replacing, self = %@", self);
 }
@@ -53,15 +53,15 @@
 - (void)activeAutoDismissObserver {
     if (self.dismissObserver) return;
 
-    @weakify(self);
-    self.dismissObserver = [[NSNotificationCenter defaultCenter] addObserverForName:SVProgressHUDWillDisappearNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
-        @strongify(self);
-        _dout_info(@"Receive SVProgressHUDWillDisappearNotification")
-        if (self.displayingMessage) {
-            RFAssert(self.displayingMessage.identifier, @"empty string");
-            [self hideWithIdentifier:self.displayingMessage.identifier];
-        }
-    }];
+//    @weakify(self);
+//    self.dismissObserver = [[NSNotificationCenter defaultCenter] addObserverForName:SVProgressHUDWillDisappearNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
+//        @strongify(self);
+//        _dout_info(@"Receive SVProgressHUDWillDisappearNotification")
+//        if (self.displayingMessage) {
+//            RFAssert(self.displayingMessage.identifier, @"empty string");
+//            [self hideWithIdentifier:self.displayingMessage.identifier];
+//        }
+//    }];
 }
 
 - (void)deactiveAutoDismissObserver {

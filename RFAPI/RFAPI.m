@@ -6,6 +6,7 @@
 #import "AFHTTPRequestOperation.h"
 #import "AFNetworkReachabilityManager.h"
 #import "AFNetworkActivityIndicatorManager.h"
+#import "API.h"
 
 RFDefineConstString(RFAPIErrorDomain);
 static NSString *RFAPIOperationUIkControl = @"RFAPIOperationUIkControl";
@@ -130,6 +131,13 @@ RFInitializingRootForNSObject
 
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer = [self.defineManager responseSerializerForDefine:define];
+    
+    if (define.path && ([define.path hasPrefix:@"http://"] || [define.path hasPrefix:@"https://"])) {
+        if ([API sharedInstance].user.token) {
+            [request setValue:[API sharedInstance].user.token forHTTPHeaderField:@"oauth_token"];
+        }
+    }
+    
     if (controlInfo) {
         operation.userInfo = @{ RFAPIOperationUIkControl : controlInfo };
     }
@@ -260,7 +268,7 @@ RFInitializingRootForNSObject
     }
     else {
         NSURLRequestCachePolicy cachePolicy = [self cachePolicyWithDefine:define controlInfo:controlInfo];
-        r = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:cachePolicy timeoutInterval:10];
+        r = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:cachePolicy timeoutInterval:30];
         [r setHTTPMethod:define.method];
         r = [[s requestBySerializingRequest:r withParameters:requestParameters error:&e] mutableCopy];
     }

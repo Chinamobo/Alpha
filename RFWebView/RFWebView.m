@@ -15,7 +15,7 @@ RFInitializingRootForUIView
 }
 
 - (void)afterInit {
-    self.userInteractionEnabled = NO;
+    self.userInteractionEnabled = YES;
 }
 
 - (CGSize)intrinsicContentSize {
