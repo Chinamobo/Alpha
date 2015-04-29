@@ -62,11 +62,32 @@
  @param completion  请求完成回掉的 block，必定会被调用（即使请求创建失败），会在 success 和 failure 回调后执行。被设计用来执行通用的清理。可为空。
  */
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName
-     parameters:(NSDictionary *)parameters
-    controlInfo:(RFAPIControl *)controlInfo
-        success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
-        failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
-     completion:(void (^)(AFHTTPRequestOperation *operation))completion;
+                                 parameters:(NSDictionary *)parameters
+                                controlInfo:(RFAPIControl *)controlInfo
+                                    success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                    failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+                                 completion:(void (^)(AFHTTPRequestOperation *operation))completion;
+
+/**
+ Creat and send a HTTP request.
+ 
+ @discussion 当请求取消时，success 和 failure 都不会被调用，只有 completion 会被调用。请求从缓存读取时，几个 block 回调中的 operation 参数会为空。
+ 
+ @param APIName     接口名
+ @param reqeustModel 创建的自定义请求规则
+ @param parameters  请求的参数
+ @param controlInfo 控制接口行为的结构体
+ @param success     请求成功回调的 block，可为空
+ @param failure     请求失败回调的 block，可为空。为空时将用默认的方法显示错误信息
+ @param completion  请求完成回掉的 block，必定会被调用（即使请求创建失败），会在 success 和 failure 回调后执行。被设计用来执行通用的清理。可为空。
+ */
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName
+                               requestModel:(RFAPIDefine *)requestModel
+                                 parameters:(NSDictionary *)parameters
+                                controlInfo:(RFAPIControl *)controlInfo
+                                    success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                    failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+                                 completion:(void (^)(AFHTTPRequestOperation *operation))completion;
 
 /**
  上传文件
@@ -74,13 +95,28 @@
  @param arrayContainsFormDataObj 包含 RFHTTPRequestFormData 对象的数组
  */
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName
-     parameters:(NSDictionary *)parameters
-       formData:(NSArray *)arrayContainsFormDataObj
-    controlInfo:(RFAPIControl *)controlInfo
- uploadProgress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
-        success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
-        failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
-     completion:(void (^)(AFHTTPRequestOperation *operation))completion;
+                                 parameters:(NSDictionary *)parameters
+                                   formData:(NSArray *)arrayContainsFormDataObj
+                                controlInfo:(RFAPIControl *)controlInfo
+                             uploadProgress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                                    success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                    failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+                                 completion:(void (^)(AFHTTPRequestOperation *operation))completion;
+
+/**
+ 上传文件
+ 
+ @param arrayContainsFormDataObj 包含 RFHTTPRequestFormData 对象的数组
+ */
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName
+                               requestModel:(RFAPIDefine *)requestModel
+                                 parameters:(NSDictionary *)parameters
+                                   formData:(NSArray *)arrayContainsFormDataObj
+                                controlInfo:(RFAPIControl *)controlInfo
+                             uploadProgress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                                    success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                    failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+                                 completion:(void (^)(AFHTTPRequestOperation *operation))completion;
 
 /**
  Creat a mutable URLRequest with special info.

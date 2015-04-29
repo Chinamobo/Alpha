@@ -109,26 +109,36 @@ RFInitializingRootForNSObject
     }
 
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName parameters:(NSDictionary *)parameters formData:(NSArray *)arrayContainsFormDataObj controlInfo:(RFAPIControl *)controlInfo uploadProgress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure completion:(void (^)(AFHTTPRequestOperation *operation))completion {
+    
     NSParameterAssert(APIName);
     RFAPIDefine *define = [self.defineManager defineForName:APIName];
-    RFAssert(define, @"Can not find an API with name: %@.", APIName);
-    if (!define) return nil;
+    
+    return [self requestWithName:APIName requestModel:(id)define parameters:parameters formData:arrayContainsFormDataObj controlInfo:controlInfo uploadProgress:progress success:success failure:failure completion:completion];
+}
 
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName requestModel:(RFAPIDefine *)requestModel parameters:(NSDictionary *)parameters formData:(NSArray *)arrayContainsFormDataObj controlInfo:(RFAPIControl *)controlInfo uploadProgress:(void (^)(NSUInteger, long long, long long))progress success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion
+{
+    
+    RFAPIDefine *define = (RFAPIDefine *)requestModel;
+    RFAssert(define, @"Can not find an API with name: %@.", APIName);
+    
+    if (!define) return nil;
+    
     NSError __autoreleasing *e = nil;
     NSMutableURLRequest *request = [self URLRequestWithDefine:define parameters:parameters formData:arrayContainsFormDataObj controlInfo:controlInfo error:&e];
     if (!request) {
         __RFAPILogError(@"无法创建请求: %@", e);
         NSError *error = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:@{
-            NSLocalizedDescriptionKey : @"内部错误，无法创建请求",
-            NSLocalizedFailureReasonErrorKey : @"很可能是应用 bug",
-            NSLocalizedRecoverySuggestionErrorKey : @"请再试一次，如果依旧请尝试重启应用。给您带来不便，敬请谅解"
-        }];
-
+                                                                                                       NSLocalizedDescriptionKey : @"内部错误，无法创建请求",
+                                                                                                       NSLocalizedFailureReasonErrorKey : @"很可能是应用 bug",
+                                                                                                       NSLocalizedRecoverySuggestionErrorKey : @"请再试一次，如果依旧请尝试重启应用。给您带来不便，敬请谅解"
+                                                                                                       }];
+        
         __RFAPICompletionCallback(failure, nil, error);
         __RFAPICompletionCallback(completion, nil);
         return nil;
     }
-
+    
     // Request object get ready.
     // Build operation block.
     RFNetworkActivityIndicatorMessage *message = controlInfo.message;
@@ -137,27 +147,27 @@ RFInitializingRootForNSObject
         if (mid) {
             [self.networkActivityIndicatorManager hideWithIdentifier:mid];
         }
-
+        
         if (completion) {
             completion(blockOp);
         }
     };
-
+    
     void (^operationSuccess)(id, id) = ^(AFHTTPRequestOperation *blockOp, id blockResponse){
         if (success) {
             success(blockOp, blockResponse);
         }
         operationCompletion(blockOp);
     };
-
+    
     void (^operationFailure)(id, NSError*) = ^(AFHTTPRequestOperation *blockOp, NSError *blockError) {
-
+        
         if (blockError.code == NSURLErrorCancelled && blockError.domain == NSURLErrorDomain) {
             dout_info(@"A HTTP operation cancelled: %@", blockOp);
             operationCompletion(blockOp);
             return;
         }
-
+        
         if ([self generalHandlerForError:blockError withDefine:define controlInfo:controlInfo requestOperation:blockOp operationFailureCallback:failure]) {
             if (failure) {
                 failure(blockOp, blockError);
@@ -168,13 +178,13 @@ RFInitializingRootForNSObject
         };
         operationCompletion(blockOp);
     };
-
+    
     // Check cache
     NSCachedURLResponse *cachedResponse = [self.cacheManager cachedResponseForRequest:request define:define control:controlInfo];
     if (cachedResponse) {
         dout_debug(@"Cache(%@) vaild for request: %@", cachedResponse, request);
         AFHTTPResponseSerializer *serializer = [self.defineManager responseSerializerForDefine:define];
-
+        
         NSError *error = nil;
         id responseObject = [serializer responseObjectForResponse:cachedResponse.response data:cachedResponse.data error:&error];
         if (error) {
@@ -183,31 +193,31 @@ RFInitializingRootForNSObject
             });
             return nil;
         }
-
+        
         dispatch_after_seconds(0, ^{
             [self processingCompletionWithHTTPOperation:nil responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure];
         });
         return nil;
     }
-
+    
     // Setup HTTP operation
     AFHTTPRequestOperation *operation = [self requestOperationWithRequest:request define:define controlInfo:controlInfo];
-
+    
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *op, id responseObject) {
         @autoreleasepool {
             dout_debug(@"HTTP request operation(%p) with info: %@ completed.", op, [op valueForKeyPath:@"userInfo.RFAPIOperationUIkControl"]);
-
+            
             [self processingCompletionWithHTTPOperation:op responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure];
             [self.cacheManager storeCachedResponseForRequest:op.request response:op.response data:op.responseData define:define control:controlInfo];
         }
     } failure:^(AFHTTPRequestOperation *op, NSError *error) {
         operationFailure(op, error);
     }];
-
+    
     if (progress) {
         [operation setUploadProgressBlock:progress];
     }
-
+    
     // Start request
     if (message) {
         dispatch_sync_on_main(^{
@@ -216,10 +226,25 @@ RFInitializingRootForNSObject
     }
     [self addOperation:operation];
     return operation;
+
 }
+
 
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName parameters:(NSDictionary *)parameters controlInfo:(RFAPIControl *)controlInfo success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion {
     return [self requestWithName:APIName parameters:parameters formData:nil controlInfo:controlInfo uploadProgress:nil success:success failure:failure completion:completion];
+}
+
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName requestModel:(RFAPIDefine *)requestModel parameters:(NSDictionary *)parameters controlInfo:(RFAPIControl *)controlInfo success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion
+{
+    return [self requestWithName:APIName
+                    requestModel:requestModel
+                      parameters:parameters
+                        formData:nil
+                     controlInfo:controlInfo
+                  uploadProgress:nil
+                         success:success
+                         failure:failure
+                      completion:completion];
 }
 
 - (void)invalidateCacheWithName:(NSString *)APIName parameters:(NSDictionary *)parameters {
