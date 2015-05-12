@@ -118,6 +118,21 @@ RFInitializingRootForNSObject
 
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName requestModel:(RFAPIDefine *)requestModel parameters:(NSDictionary *)parameters formData:(NSArray *)arrayContainsFormDataObj controlInfo:(RFAPIControl *)controlInfo uploadProgress:(void (^)(NSUInteger, long long, long long))progress success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion
 {
+    return [self requestWithName:APIName
+                    requestModel:requestModel
+                      parameters:parameters
+                        formData:arrayContainsFormDataObj
+                     controlInfo:controlInfo
+                       delayTime:0
+                  uploadProgress:progress
+                         success:success
+                         failure:failure
+                      completion:completion];
+}
+
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName requestModel:(RFAPIDefine *)requestModel parameters:(NSDictionary *)parameters formData:(NSArray *)arrayContainsFormDataObj controlInfo:(RFAPIControl *)controlInfo delayTime:(NSTimeInterval)delayTime uploadProgress:(void (^)(NSUInteger, long long, long long))progress success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion
+{
+    __block BOOL isCompletion = NO;
     
     RFAPIDefine *define = (RFAPIDefine *)requestModel;
     RFAssert(define, @"Can not find an API with name: %@.", APIName);
@@ -151,9 +166,11 @@ RFInitializingRootForNSObject
         if (completion) {
             completion(blockOp);
         }
+        isCompletion = YES;
     };
     
     void (^operationSuccess)(id, id) = ^(AFHTTPRequestOperation *blockOp, id blockResponse){
+        
         if (success) {
             success(blockOp, blockResponse);
         }
@@ -210,7 +227,9 @@ RFInitializingRootForNSObject
             [self processingCompletionWithHTTPOperation:op responseObject:responseObject define:define control:controlInfo success:operationSuccess failure:operationFailure];
             [self.cacheManager storeCachedResponseForRequest:op.request response:op.response data:op.responseData define:define control:controlInfo];
         }
+        
     } failure:^(AFHTTPRequestOperation *op, NSError *error) {
+        
         operationFailure(op, error);
     }];
     
@@ -220,15 +239,15 @@ RFInitializingRootForNSObject
     
     // Start request
     if (message) {
-        dispatch_sync_on_main(^{
-            [self.networkActivityIndicatorManager showMessage:message];
+        dispatch_after(delayTime, dispatch_get_main_queue(), ^{
+            if (!isCompletion) {
+                [self.networkActivityIndicatorManager showMessage:message];
+            }
         });
     }
     [self addOperation:operation];
     return operation;
-
 }
-
 
 - (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName parameters:(NSDictionary *)parameters controlInfo:(RFAPIControl *)controlInfo success:(void (^)(AFHTTPRequestOperation *, id))success failure:(void (^)(AFHTTPRequestOperation *, NSError *))failure completion:(void (^)(AFHTTPRequestOperation *))completion {
     return [self requestWithName:APIName parameters:parameters formData:nil controlInfo:controlInfo uploadProgress:nil success:success failure:failure completion:completion];

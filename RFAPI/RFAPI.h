@@ -118,6 +118,17 @@
                                     failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
                                  completion:(void (^)(AFHTTPRequestOperation *operation))completion;
 
+- (AFHTTPRequestOperation *)requestWithName:(NSString *)APIName
+                               requestModel:(RFAPIDefine *)requestModel
+                                 parameters:(NSDictionary *)parameters
+                                   formData:(NSArray *)arrayContainsFormDataObj
+                                controlInfo:(RFAPIControl *)controlInfo
+                                  delayTime:(NSTimeInterval)delayTime
+                             uploadProgress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                                    success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                    failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+                                 completion:(void (^)(AFHTTPRequestOperation *operation))completion;
+
 /**
  Creat a mutable URLRequest with special info.
  */
