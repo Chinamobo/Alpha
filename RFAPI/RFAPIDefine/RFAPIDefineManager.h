@@ -23,14 +23,17 @@
 /**
  You cannot get default rule with RFAPIDefineDefaultKey.
  */
-@property (readonly, nonatomic) NSMutableDictionary *defaultRule;
+@property (readonly, nonatomic) RFAPIDefine *defaultRule;
 
 /**
  If you make any change in the default rule, you should call this method to make these changes take effect.
  */
 - (void)setNeedsUpdateDefaultRule;
 
-- (void)setDefinesWithRulesInfo:(NSDictionary *)rulesDictionary;
+/**
+ *  创建默认的规则
+ */
+- (void)setDefinesWithRules;
 
 /**
  Returns the define object with the specified name.

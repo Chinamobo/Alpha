@@ -2,7 +2,7 @@
 #import "RFTableViewPullToFetchPlugin.h"
 #import "UIScrollView+RFScrollViewContentDistance.h"
 #import "UIView+RFAnimate.h"
-#import "RFKVOWrapper.h"
+//#import "RFKVOWrapper.h"
 
 #undef RFDebugLevel
 #define RFDebugLevel 2
@@ -58,11 +58,11 @@ static NSTimeInterval RFPullToFetchAnimateTimeInterval = .2;
         self.hasFetched = NO;
         self.footerContainer.hidden = YES;
 
-        @weakify(self);
-        self.contentSizeChangedObserver = [tableView RFAddObserver:self forKeyPath:@keypath(tableView, contentSize) options:(NSKeyValueObservingOptions)(NSKeyValueObservingOptionInitial|NSKeyValueObservingOptionNew) queue:nil block:^(id observer, NSDictionary *change) {
-            @strongify(self);
-            [self updateFooterLayout];
-        }];
+//        @weakify(self);
+//        self.contentSizeChangedObserver = [tableView RFAddObserver:self forKeyPath:@keypath(tableView, contentSize) options:(NSKeyValueObservingOptions)(NSKeyValueObservingOptionInitial|NSKeyValueObservingOptionNew) queue:nil block:^(id observer, NSDictionary *change) {
+//            @strongify(self);
+//            [self updateFooterLayout];
+//        }];
 
         _tableView = tableView;
     }

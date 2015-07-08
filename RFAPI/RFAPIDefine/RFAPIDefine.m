@@ -4,6 +4,18 @@
 
 @implementation RFAPIDefine
 
+- (instancetype)init
+{
+    self = [super init];
+    
+    if (self) {
+        self.needsAuthorization = YES;
+        self.expire = 60;
+    }
+    
+    return self;
+}
+
 - (NSString *)description {
     return [NSString stringWithFormat:@"<%@: %p, name = %@, path = %@>", self.class, self, self.name, self.path];
 }
